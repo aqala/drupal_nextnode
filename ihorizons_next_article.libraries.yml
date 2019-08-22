@@ -1,0 +1,8 @@
+infinite_scroll:
+  version: 1.0
+  js:
+    js/infinite_scroll.pkgd.js: {}
+    js/ihorizons_next_article.js: {}
+  dependencies:
+    - core/jquery
+    - core/drupal

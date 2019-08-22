@@ -1,0 +1,5 @@
+name: 'iHorizons Next Article'
+type: module
+description: 'This module provide functionality to load next url without refreshing the page.'
+core: 8.x
+package: 'Custom'
