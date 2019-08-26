@@ -18,12 +18,13 @@
   Drupal.behaviors.ihorizons_next_article = {
     attach: function (context) {
       // Module code start.
-
-      $('.ihorizons-scroll .content').infiniteScroll({
+      var wrapper_class = '.' + drupalSettings.ihorizons_next_article.infiniteScroll.wrapper_class; 
+      
+      $(wrapper_class + ' .content').infiniteScroll({
         path: function () {
           return drupalSettings.ihorizons_next_article.infiniteScroll.next_articles[this.loadCount];
         },
-        append: '.content .node'
+        append: '.region-content'
       });
     }
   };

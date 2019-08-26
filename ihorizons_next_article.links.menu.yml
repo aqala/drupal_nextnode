@@ -1,0 +1,8 @@
+
+# Next article config menu items definition
+entity.next_article_config.collection:
+  title: 'Next article config'
+  route_name: entity.next_article_config.collection
+  description: 'List Next article config (bundles)'
+  parent: system.admin_structure
+  weight: 99

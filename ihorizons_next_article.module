@@ -4,8 +4,12 @@
  * @file
  * Contains ihorizons_next_article.module.
  */
-
 use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\node\NodeTypeInterface;
+use Drupal\node\Entity\NodeType;
+use Drupal\Core\Routing;
+use Drupal\node\NodeInterface;
 
 /**
  * Implements hook_help().
@@ -29,25 +33,28 @@ function ihorizons_next_article_help($route_name, RouteMatchInterface $route_mat
 function ihorizons_next_article_preprocess_node(&$variables) {
 
   if (!empty($variables['node']->bundle())) {
-    $variables['attributes']['class'][] = 'next-article';
+    $node_config = NodeType::load($variables['node']->bundle());
+    $node_config = $node_config->getThirdPartySettings('ihorizons_next_article');
+    if (!empty($node_config['infinite_scroll'])) {
+      // Set next pages list
+      $pages = [];
+      $entity = \Drupal::entityQuery('node');
+      $entity->condition('status', 1)
+        ->condition('type', $variables['node']->bundle())
+        ->condition('nid', $variables['node']->id(), '!=')
+        ->sort('created', $node_config['next_article_order']);
+      $result = $entity->execute();
 
-    // Set next pages list
-    $pages = [];
-
-    $entity = \Drupal::entityQuery('node');
-    $entity->condition('status', 1)
-      ->condition('type', $variables['node']->bundle())
-      ->condition('nid', $variables['node']->id(), '!=');
-    $result = $entity->execute();
-
-    if (!empty($result)) {
-      foreach ($result as $node) {
-        $node = \Drupal::service('entity_type.manager')->getStorage('node')->load($node);
-        $pages[] = $node->toUrl()->setAbsolute()->toString();
+      if (!empty($result)) {
+        foreach ($result as $node) {
+          $node = \Drupal::service('entity_type.manager')->getStorage('node')->load($node);
+          $pages[] = $node->toUrl()->setAbsolute()->toString();
+        }
       }
+      $variables['#attached']['library'][] = 'ihorizons_next_article/infinite_scroll';
+      $variables['#attached']['drupalSettings']['ihorizons_next_article']['infiniteScroll']['next_articles'] = $pages;
+      $variables['#attached']['drupalSettings']['ihorizons_next_article']['infiniteScroll']['wrapper_class'] = $node_config['wrapper_class'];
     }
-    $variables['#attached']['library'][] = 'ihorizons_next_article/infinite_scroll';
-    $variables['#attached']['drupalSettings']['ihorizons_next_article']['infiniteScroll']['next_articles'] = $pages;
   }
 }
 
@@ -55,8 +62,77 @@ function ihorizons_next_article_preprocess_node(&$variables) {
  * Implements template_preprocess_region().
  */
 function ihorizons_next_article_preprocess_block(&$variables) {
-
   if ($variables['plugin_id'] == 'system_main_block') {
-    $variables['attributes']['class'][] = 'ihorizons-scroll';
+    $route_match = \Drupal::service('current_route_match');
+    $node = $route_match->getParameter('node');
+    if ($node instanceof NodeInterface) {
+      $node_config = NodeType::load($node->bundle());
+      $node_config = $node_config->getThirdPartySettings('ihorizons_next_article');
+      $variables['attributes']['class'][] = $node_config['wrapper_class'];
+    }
   }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ *
+ * {@inheritdoc}
+ */
+function ihorizons_next_article_form_node_type_form_alter(&$form, FormStateInterface $form_state) {
+  $type = $form_state->getFormObject()->getEntity();
+  $form['next_article'] = [
+    '#type' => 'details',
+    '#title' => t('Next Article settings'),
+    '#attached' => [
+      'library' => ['menu_ui/drupal.menu_ui.admin'],
+    ],
+    '#group' => 'additional_settings',
+  ];
+  $form['next_article']['infinite_scroll'] = [
+    '#type' => 'checkbox',
+    '#title' => t('Enable Infinite Scroll'),
+    '#default_value' => $type->getThirdPartySetting('ihorizons_next_article', 'infinite_scroll'),
+    '#description' => t('Check this box if you want to auto load next article on node detail page.'),
+  ];
+  $form['next_article']['wrapper_class'] = [
+    '#type' => 'textfield',
+    '#title' => t('Infinite Scroll Wrapper Class'),
+    '#default_value' => $type->getThirdPartySetting('ihorizons_next_article', 'wrapper_class'),
+    '#description' => t('Add html wrapper class which will be used as parent wrapper class for infinite scroll library.'),
+  ];
+  $form['next_article']['next_article_order'] = [
+    '#type' => 'select',
+    '#title' => t('Next Article: Order by published date'),
+    '#options' => ['asc' => t('ASC'), 'desc' => t('DESC')],
+    '#default_value' => $type->getThirdPartySetting('ihorizons_next_article', 'next_article_order'),
+    '#description' => t('How should node load on auto scroll.'),
+  ];
+
+  $form['#entity_builders'][] = 'ihorizons_next_article_form_node_type_form_builder';
+}
+
+/**
+ * Entity builder for the node type form with next article options.
+ *
+ * @see ihorizons_next_article_form_node_type_form_alter()
+ */
+function ihorizons_next_article_form_node_type_form_builder($entity_type, NodeTypeInterface $type, &$form, FormStateInterface $form_state) {
+  if ($form_state->getValue('infinite_scroll') && $form_state->getValue('wrapper_class')) {
+    $type->setThirdPartySetting(
+      'ihorizons_next_article', 'infinite_scroll',
+      $form_state->getValue('infinite_scroll')
+    );
+    $type->setThirdPartySetting(
+      'ihorizons_next_article', 'wrapper_class',
+      $form_state->getValue('wrapper_class')
+    );
+    $type->setThirdPartySetting(
+      'ihorizons_next_article', 'next_article_order',
+      $form_state->getValue('next_article_order')
+    );
+    return;
+  }
+  $type->unsetThirdPartySetting('ihorizons_next_article', 'infinite_scroll');
+  $type->unsetThirdPartySetting('ihorizons_next_article', 'wrapper_class');
+  $type->unsetThirdPartySetting('ihorizons_next_article', 'next_article_order');
 }

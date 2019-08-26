@@ -1,0 +1,35 @@
+ihorizons_next_article.next_article_config.*:
+  type: config_entity
+  label: 'Next article config config'
+  mapping:
+    id:
+      type: string
+      label: 'ID'
+    label:
+      type: label
+      label: 'Label'
+    bundle:
+      type: string
+      label: 'Content Type'
+    node_list:
+      type: string
+      label: 'Node List'
+    sort_order:
+      type: string
+      label: 'Sort'
+    is_active:
+      type: boolean
+      lable: 'Published'
+    uuid:
+      type: string
+      
+node.type.*.third_party.ihorizons_next_article:
+  type: mapping
+  label: 'Per-content type next article settings'
+  mapping:
+    next_article:
+      type: sequence
+      label: 'NextArticle settings'
+      sequence:
+       type: string
+       label: 'Menu machine name'

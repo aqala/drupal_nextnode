@@ -1,0 +1,5 @@
+entity.next_article_config.add_form:
+  route_name: entity.next_article_config.add_form
+  title: 'Add Next article config'
+  appears_on:
+    - entity.next_article_config.collection
